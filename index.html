@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Clash Royale Spell & Card Damage</title>
+<style>
+  :root {
+    --bg: #f5f5f5;
+    --card-bg: #ffffff;
+    --text: #333333;
+    --accent: #b8860b;
+    --accent-light: rgba(184,134,11,0.08);
+    --border: #ddd;
+    --header-bg: #f0f0f0;
+    --hover-row: rgba(184,134,11,0.06);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* ── Header ── */
+  header {
+    background: #ffffff;
+    border-bottom: 2px solid var(--accent);
+    padding: 14px 20px;
+    z-index: 100;
+  }
+  .header-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  h1 { font-size: 1.4rem; color: var(--accent); white-space: nowrap; }
+  .controls { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .btn {
+    padding: 7px 16px;
+    border: 1px solid var(--accent);
+    background: transparent;
+    color: var(--accent);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .btn:hover { background: var(--accent-light); }
+  .btn.active { background: var(--accent); color: #fff; font-weight: bold; }
+  .sep { color: #ccc; margin: 0 4px; user-select: none; }
+  .legend {
+    display: flex; gap: 16px; flex-wrap: wrap;
+    margin-top: 8px; font-size: 0.78rem; color: #888;
+  }
+  .legend span { display: flex; align-items: center; gap: 4px; }
+  .legend .dot { width: 10px; height: 10px; border-radius: 2px; }
+  .dot.dmg { background: #d63031; }
+  .dot.tower { background: #7d3c98; }
+  .dot.building { background: #27ae60; }
+
+  /* ── Main ── */
+  main { max-width: 1500px; margin: 0 auto; padding: 12px 16px; }
+
+  /* ── Table ── */
+  .table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--card-bg);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-variant-numeric: tabular-nums;
+  }
+  thead {
+    z-index: 10;
+  }
+  th {
+    position: sticky;
+    top: 0;
+    background: #f0f0f0;
+    padding: 10px 12px;
+    text-align: left;
+    font-size: 0.8rem;
+    color: #666;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid #ccc;
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+    transition: color 0.15s;
+  }
+  th:hover { color: var(--accent); }
+  th .sort-arrow { margin-left: 4px; font-size: 0.7rem; color: #bbb; }
+  th.sort-asc .sort-arrow,
+  th.sort-desc .sort-arrow { color: var(--accent); }
+  td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #eee;
+    font-size: 0.88rem;
+    white-space: nowrap;
+  }
+  tbody tr { transition: background 0.12s; }
+  tbody tr:hover { background: var(--hover-row); }
+  .cell-name {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 160px;
+  }
+  .td-icon {
+    width: 36px; height: 36px;
+    border-radius: 5px;
+    flex-shrink: 0;
+    background: #f5f5f5;
+  }
+  .td-icon img { width: 100%; height: 100%; object-fit: contain; }
+  .td-dmg { color: #d63031; font-weight: 600; }
+  .td-tower { color: #7d3c98; font-weight: 600; }
+  .td-building { color: #27ae60; font-weight: 600; }
+  .td-pct { color: #7d3c98; }
+  .dmg-bd { font-weight: 400; font-size: 0.78rem; color: #999; }
+  .td-na { color: #bbb; }
+
+  /* ── Grid (secondary) ── */
+  .grid {
+    display: none;
+    grid-template-columns: repeat(auto-fill, minmax(310px, 1fr));
+    gap: 14px;
+  }
+  .grid.active { display: grid; }
+  .table-wrap.hidden { display: none; }
+
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    transition: transform 0.15s, border-color 0.15s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .card:hover { transform: translateY(-2px); border-color: var(--accent); }
+  .card-header {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; background: #f0f0f0;
+    border-bottom: 1px solid var(--border);
+  }
+  .card-icon {
+    width: 44px; height: 44px;
+    border-radius: 6px; background: #f5f5f5; flex-shrink: 0;
+  }
+  .card-icon img { width: 100%; height: 100%; object-fit: contain; }
+  .card-name { font-weight: 600; font-size: 0.95rem; flex: 1; min-width: 0; }
+  .card-body { padding: 10px 12px; }
+  .dmg-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 5px 0; font-size: 0.9rem;
+  }
+  .dmg-row + .dmg-row { border-top: 1px solid #f0f0f0; }
+  .dmg-label { color: #888; font-size: 0.8rem; }
+  .dmg-value { font-weight: bold; }
+  .dmg-value.damage { color: #d63031; }
+  .dmg-value.tower { color: #7d3c98; }
+  .dmg-value.building { color: #27ae60; }
+  .tower-pct { font-size: 0.75rem; color: #7d3c98; margin-left: 4px; }
+  .card-footer {
+    padding: 6px 12px; font-size: 0.75rem; color: #999;
+    border-top: 1px solid #f0f0f0;
+  }
+
+  /* ── Footer ── */
+  .page-footer {
+    text-align: center;
+    padding: 20px 16px 24px;
+    color: #bbb;
+    font-size: 0.78rem;
+  }
+
+  @media (max-width: 600px) {
+    h1 { font-size: 1.1rem; }
+    th, td { padding: 8px 6px; font-size: 0.78rem; }
+    .td-icon { width: 28px; height: 28px; }
+    .grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="header-top">
+    <h1>⚔️ Clash Royale 法术与技能伤害</h1>
+    <div class="controls">
+      <button class="btn active" id="btn11" onclick="setLevel(11)">11 级</button>
+      <button class="btn" id="btn16" onclick="setLevel(16)">16 级</button>
+      <span class="sep">|</span>
+      <button class="btn active" id="btnCN" onclick="setLang('cn')">中文</button>
+      <button class="btn" id="btnEN" onclick="setLang('en')">EN</button>
+      <span class="sep">|</span>
+      <button class="btn active" id="btnTable" onclick="setView('table')">📋 表格</button>
+      <button class="btn" id="btnGrid" onclick="setView('grid')">🃏 卡片</button>
+    </div>
+  </div>
+  <div class="legend">
+    <span><span class="dot dmg"></span> 伤害</span>
+    <span><span class="dot tower"></span> 皇家塔伤害</span>
+    <span><span class="dot building"></span> 建筑伤害</span>
+  </div>
+</header>
+
+<main>
+  <!-- TABLE VIEW (primary) -->
+  <div class="table-wrap" id="tableView">
+    <table>
+      <thead>
+        <tr>
+          <th data-sort="name" class="sort-asc" onclick="doSort('name')">卡牌 <span class="sort-arrow">▲</span></th>
+          <th data-sort="dmg" onclick="doSort('dmg')">伤害 <span class="sort-arrow">▼</span></th>
+          <th data-sort="twrPct" onclick="doSort('twrPct')">塔伤% <span class="sort-arrow">▼</span></th>
+          <th data-sort="twr" onclick="doSort('twr')">皇家塔伤害 <span class="sort-arrow">▼</span></th>
+          <th data-sort="bld" onclick="doSort('bld')">建筑伤害 <span class="sort-arrow">▼</span></th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+
+  <!-- GRID VIEW (secondary) -->
+  <div class="grid" id="gridView"></div>
+</main>
+
+<footer class="page-footer">
+  数据更新截止到 2026.6
+</footer>
+
+<script>
+// ════════════════════════════════════════
+// Card data
+// ════════════════════════════════════════
+const CARDS = [
+  { id:"arrows",       cn:"万箭齐发",     en:"Arrows",               icon:"arrows.png",                  dmg11:"366",   dmg11b:"122*3",  dmg16:"588",   dmg16b:"196*3",  twrPct:0.20, twr11:"75",   twr11b:"25*3",  twr16:"120",  twr16b:"40*3" },
+  { id:"barb-barrel",  cn:"野蛮人滚桶",   en:"Barbarian Barrel",    icon:"barbarian-barrel.png",         dmg11:"232",   dmg16:"372",   twrPct:1.0,   twr11:"232",  twr16:"372" },
+  { id:"fireball",     cn:"火球",         en:"Fireball",            icon:"fireball.png",                 dmg11:"688",   dmg16:"1100",  twrPct:0.25,  twr11:"172",  twr16:"275" },
+  { id:"lightning",    cn:"雷电法术",     en:"Lightning",           icon:"lightning.png",                dmg11:"1057",  dmg16:"1689",  twrPct:0.25,  twr11:"265",  twr16:"423" },
+  { id:"log",          cn:"复仇滚木",     en:"The Log",             icon:"the-log.png",                  dmg11:"268",   dmg16:"429",   twrPct:0.13, twr11:"35",   twr16:"56" },
+  { id:"rocket",       cn:"火箭",         en:"Rocket",              icon:"rocket.png",                   dmg11:"1484",  dmg16:"2372",  twrPct:0.23,  twr11:"342",  twr16:"546" },
+  { id:"royal-deliv",  cn:"皇家速递",     en:"Royal Delivery",      icon:"royal-delivery.png",           dmg11:"437",   dmg16:"636",   twrPct:1.0,   twr11:"437",  twr16:"636" },
+  { id:"snowball",     cn:"大雪球",       en:"Giant Snowball",      icon:"giant-snowball.png",           dmg11:"179",   dmg16:"286",   twrPct:0.25, twr11:"45",   twr16:"72" },
+  { id:"evo-snowball", cn:"进化雪球",     en:"Evolved Snowball",    icon:"evolved-giant-snowball.png",   dmg11:"179",   dmg16:"286",   twrPct:0.25,  twr11:"46",   twr16:"73" },
+  { id:"freeze",       cn:"冰冻法术",     en:"Freeze",              icon:"freeze.png",                   dmg11:"148",   dmg16:"237",   twrPct:0.25, twr11:"37",   twr16:"60" },
+  { id:"poison",       cn:"毒药法术",     en:"Poison",              icon:"poison.png",                   dmg11:"736",   dmg11b:"92*8",  dmg16:"1176",  dmg16b:"147*8",  twrPct:0.23, twr11:"176",  twr11b:"22*8",  twr16:"272",  twr16b:"34*8" },
+  { id:"rage",         cn:"狂暴法术",     en:"Rage",                icon:"rage.png",                     dmg11:"179",   dmg16:"286",   twrPct:0.25,  twr11:"45",   twr16:"72" },
+  { id:"zap",          cn:"电击法术",     en:"Zap",                 icon:"zap.png",                      dmg11:"192",   dmg16:"306",   twrPct:0.25,  twr11:"48",   twr16:"77" },
+  { id:"tornado",      cn:"飓风法术",     en:"Tornado",             icon:"tornado.png",                  dmg11:"84",    dmg16:"134",   twrPct:0.3,   twr11:"25",   twr16:"40" },
+  { id:"earthquake",   cn:"地震法术",     en:"Earthquake",          icon:"earthquake.png",               dmg11:"243",   dmg11b:"81*3",  dmg16:"390",   dmg16b:"130*3",  twrPct:0.6, twr11:"147",  twr11b:"49*3",  twr16:"234",  twr16b:"78*3",  bld11:"849",  bld11b:"283*3", bld16:"1365", bld16b:"455*3" },
+  { id:"void-1",       cn:"虚空法术（1单位）",     en:"Void (1 Unit)",     icon:"void.png",             dmg11:"1020",  dmg11b:"340*3", dmg16:"1629",  dmg16b:"543*3", twrPct:0.14, twr11:"144",  twr11b:"48*3",  twr16:"231",  twr16b:"77*3" },
+  { id:"void-2",       cn:"虚空法术（2~4单位）",   en:"Void (2-4 Units)",  icon:"void.png",             dmg11:"480",   dmg11b:"160*3", dmg16:"765",   dmg16b:"255*3", twrPct:0.16,  twr11:"75",   twr11b:"25*3",  twr16:"120",  twr16b:"40*3" },
+  { id:"void-5",       cn:"虚空法术（5单位以上）",  en:"Void (5+ Units)",   icon:"void.png",             dmg11:"228",   dmg11b:"76*3",  dmg16:"363",   dmg16b:"121*3", twrPct:0.22,  twr11:"51",   twr11b:"17*3",  twr16:"84",   twr16b:"28*3" },
+  { id:"gob-curse",    cn:"哥布林诅咒",   en:"Goblin Curse",        icon:"goblin-curse.png",             dmg11:"210",   dmg11b:"35*6",  dmg16:"342",   dmg16b:"57*6",  twrPct:0.29,  twr11:"60",   twr11b:"10*6",  twr16:"96",   twr16b:"16*6" },
+  { id:"vines",        cn:"藤蔓",         en:"Vines",               icon:"vines.png",                    dmg11:"306",   dmg11b:"153*2", dmg16:"490",   dmg16b:"245*2", twrPct:0.23,  twr11:"70",   twr11b:"35*2",  twr16:"114",  twr16b:"57*2" },
+  { id:"miner",        cn:"矿工",         en:"Miner",               icon:"miner.png",                    dmg11:"194",   dmg16:"310",   twrPct:0.25,  twr11:"49",   twr16:"78" },
+  { id:"electro-giant",cn:"雷电巨人的反击", en:"Electro Giant Reflection",      icon:"electro-giant.png",            dmg11:"192",   dmg16:"306",   twrPct:0.5,   twr11:"97",   twr16:"155" },
+  { id:"electro-wiz",  cn:"雷电法师的登场", en:"Electro Wizard Spawn",     icon:"electro-wizard.png",           dmg11:"192",   dmg16:"306",   twrPct:0.0,   twr11:"0",    twr16:"0" },
+  { id:"ice-wiz",      cn:"寒冰法师的登场", en:"Ice Wizard Spawn",         icon:"ice-wizard.png",               dmg11:"84",    dmg16:"134",   twrPct:0.0,   twr11:"0",    twr16:"0" },
+  { id:"gob-drill",    cn:"钻机的出土",   en:"Goblin Drill Spawn",        icon:"goblin-drill.png",             dmg11:"84",    dmg16:"134",   twrPct:0.3,   twr11:"26",   twr16:"41" },
+  { id:"lumberjack",   cn:"樵夫掉落的狂暴", en:"Lumberjack Rage",  icon:"lumberjack.png",               dmg11:"179",   dmg16:"286",   twrPct:0.25,  twr11:"45",   twr16:"72" },
+  { id:"gob-machine",  cn:"机甲的导弹",   en:"Goblin Machine Rocket",      icon:"goblin-machine.png",           dmg11:"304",   dmg16:"486",   twrPct:0.5,   twr11:"152",  twr16:"243" },
+  { id:"phoenix",      cn:"凤凰的亡语爆炸", en:"Phoenix Death",    icon:"phoenix.png",                  dmg11:"163",   dmg16:"261",   twrPct:1.0,   twr11:"163",  twr16:"261" },
+  { id:"evo-lumber",   cn:"进化樵夫的幽灵樵夫", en:"Evolved Lumberjack Ghost", icon:"evolved-lumberjack.png",  dmg11:"256",   dmg16:"409",   twrPct:0.5,   twr11:"128",  twr16:"205" },
+  { id:"evo-dart-1",   cn:"进化吹箭的毒药（一段）", en:"Evolved Dart Goblin Poison 1st", icon:"evolved-dart-goblin.png", dmg11:"64", dmg16:"102", twrPct:0.25, twr11:"15", twr16:"24" },
+  { id:"evo-dart-2",   cn:"进化吹箭的毒药（二段）", en:"Evolved Dart Goblin Poison 2nd", icon:"evolved-dart-goblin.png", dmg11:"128", dmg16:"204", twrPct:0.25, twr11:"32", twr16:"51" },
+  { id:"evo-dart-3",   cn:"进化吹箭的毒药（三段）", en:"Evolved Dart Goblin Poison 3rd", icon:"evolved-dart-goblin.png", dmg11:"307", dmg16:"490", twrPct:0.25, twr11:"76", twr16:"122" },
+  { id:"evo-wallbrk",  cn:"进化炸弹人的亡语爆炸", en:"Evolved Wall Breakers Death", icon:"evolved-wall-breakers.png", dmg11:"192", dmg16:"309", twrPct:0.86, twr11:"166", twr16:"267" },
+  { id:"evo-musket",   cn:"进化火枪的狙击", en:"Evolved Musketeer Sniper",  icon:"evolved-musketeer.png",        dmg11:"1173",  dmg11b:"391*3", dmg16:"1875",  dmg16b:"625*3", twrPct:1.0, twr11:"1173", twr11b:"391*3", twr16:"1875", twr16b:"625*3" },
+  { id:"evo-cannon",   cn:"进化加农炮的炮轰", en:"Evolved Cannon Barrage",   icon:"evolved-cannon.png",           dmg11:"281",   dmg16:"449",   twrPct:0.19,  twr11:"53",   twr16:"85" },
+  { id:"hero-megamin", cn:"英雄重甲亡灵传送后的伤害", en:"Hero Mega Minion After Teleport", icon:"Hero-MegaMinion.png",  dmg11:"312",   dmg16:"498",   twrPct:0.5,   twr11:"156",  twr16:"249" },
+  { id:"hero-bloon-t", cn:"英雄气球的伞兵", en:"Hero Balloon Trooper", icon:"Hero-Balloon.png", dmg11:"256", dmg16:"409", twrPct:0.1, twr11:"26", twr16:"41" },
+  { id:"hero-bloon-s", cn:"伞兵的召唤伤害", en:"Hero Balloon Trooper Spawn", icon:"Hero-Balloon.png",            dmg11:"263",   dmg16:"421",   twrPct:0.1,   twr11:"26",   twr16:"43" },
+  { id:"hero-bowler",  cn:"英雄巨石投手的投篮", en:"Hero Bowler Swish",    icon:"Hero-Bowler.png",              dmg11:"384",   dmg16:"613",   twrPct:0.5,   twr11:"192",  twr16:"307" },
+  { id:"hero-wiz",     cn:"英雄火法的飓风", en:"Hero Wizard Tornado", icon:"hero-wizard.png",          dmg11:"43",    dmg16:"69",    twrPct:1.0,   twr11:"43",   twr16:"69" },
+  { id:"evo-valk",     cn:"进化武神的飓风", en:"Evolved Valkyrie Tornado", icon:"evolved-valkyrie.png", dmg11:"84", dmg16:"135", twrPct:0.3, twr11:"25", twr16:"41" },
+  { id:"hero-barrel",  cn:"英雄滚筒的重滚", en:"Hero Barbarian Barrel Reroll", icon:"Hero-Barbarian-Barrel.png", dmg11:"232", dmg16:"372", twrPct:0.5, twr11:"116", twr16:"186" },
+  { id:"hero-ice",     cn:"英雄冰人的暴风雪", en:"Hero Ice Golem Snowstorm",   icon:"hero-ice-golem.png",           dmg11:"252",   dmg11b:"84*3",  dmg16:"402",   dmg16b:"143*3",  twrPct:0.05, twr11:"12",  twr11b:"4*3",  twr16:"21",  twr16b:"7*3" },
+  { id:"hero-dp",      cn:"英雄黑王犀牛的召唤伤害", en:"Hero Dark Prince Rhino Spawn", icon:"Hero-DarkPrince.png", dmg11:"307", dmg16:"490", twrPct:0.0, twr11:"0", twr16:"0" },
+  { id:"gobstein",     cn:"斯坦的闪电链", en:"Goblinstein Lightning Chain", icon:"goblinstein.png",              dmg11:"856",   dmg11b:"214*4", dmg16:"1368",  dmg16b:"342*4", twrPct:0.21,  twr11:"184",  twr11b:"46*4",  twr16:"288",  twr16b:"72*4" },
+  { id:"evo-fc-big",   cn:"进化烟花的大火花", en:"Evolved Firecracker Big Spark", icon:"evolved-firecracker.png", dmg11:"144", dmg11b:"48*3", dmg16:"240", dmg16b:"80*3", twrPct:0.3, twr11:"36", twr11b:"12*3", twr16:"72", twr16b:"24*3" },
+  { id:"evo-fc-small", cn:"进化烟花的小火花", en:"Evolved Firecracker Small Spark", icon:"evolved-firecracker.png", dmg11:"120", dmg11b:"48*2.5", dmg16:"200", dmg16b:"80*2.5", twrPct:0.3, twr11:"30", twr11b:"12*2.5", twr16:"60", twr16b:"24*2.5" },
+  { id:"evo-tesla",    cn:"进化电塔的脉冲", en:"Evolved Tesla Pulse",      icon:"evolved-tesla.png",            dmg11:"148",   dmg16:"237",   twrPct:0.36,  twr11:"53",   twr16:"85" },
+];
+
+// ════════════════════════════════════════
+// State
+// ════════════════════════════════════════
+let currentLevel = 11;
+let currentLang = 'cn';
+let currentView = 'table';
+let sortKey = 'name';
+let sortDir = 1; // 1 = asc, -1 = desc
+
+// ════════════════════════════════════════
+// Helpers
+// ════════════════════════════════════════
+function fmtDmg(total, breakdown) {
+  if (breakdown) {
+    const [base, count] = breakdown.split('*');
+    return `${total}<span class="dmg-bd"> (${base}×${count})</span>`;
+  }
+  return total;
+}
+
+function fmtDmgPlain(total, breakdown) {
+  if (breakdown) {
+    const [base, count] = breakdown.split('*');
+    return `${total} (${base}×${count})`;
+  }
+  return total;
+}
+
+function getSortValue(card, key) {
+  const lv = currentLevel;
+  switch (key) {
+    case 'name': return (currentLang === 'cn' ? card.cn : card.en).toLowerCase();
+    case 'dmg':  return parseInt(card[`dmg${lv}`]) || 0;
+    case 'twrPct': return card.twrPct;
+    case 'twr':  return parseInt(card[`twr${lv}`]) || 0;
+    case 'bld': {
+      const v = card[`bld${lv}`];
+      return v ? parseInt(v) : -1; // -1 so empty sorts last
+    }
+    default: return 0;
+  }
+}
+
+// ════════════════════════════════════════
+// Actions
+// ════════════════════════════════════════
+function setLevel(lv) {
+  currentLevel = lv;
+  document.getElementById('btn11').classList.toggle('active', lv === 11);
+  document.getElementById('btn16').classList.toggle('active', lv === 16);
+  render();
+}
+
+function setLang(lang) {
+  currentLang = lang;
+  document.getElementById('btnCN').classList.toggle('active', lang === 'cn');
+  document.getElementById('btnEN').classList.toggle('active', lang === 'en');
+  updateLabels();
+  render();
+}
+
+function setView(view) {
+  currentView = view;
+  document.getElementById('btnTable').classList.toggle('active', view === 'table');
+  document.getElementById('btnGrid').classList.toggle('active', view === 'grid');
+  document.getElementById('tableView').classList.toggle('hidden', view !== 'table');
+  document.getElementById('gridView').classList.toggle('active', view === 'grid');
+  render();
+}
+
+function doSort(key) {
+  if (sortKey === key) {
+    sortDir *= -1;
+  } else {
+    sortKey = key;
+    sortDir = 1;
+  }
+  render();
+}
+
+function updateLabels() {
+  const isCN = currentLang === 'cn';
+  // Update column headers
+  const ths = document.querySelectorAll('th');
+  if (ths.length >= 5) {
+    ths[0].childNodes[0].textContent = isCN ? '卡牌 ' : 'Card ';
+    ths[1].childNodes[0].textContent = isCN ? '伤害 ' : 'Damage ';
+    ths[2].childNodes[0].textContent = isCN ? '塔伤% ' : 'Tower% ';
+    ths[3].childNodes[0].textContent = isCN ? '皇家塔伤害 ' : 'Tower Dmg ';
+    ths[4].childNodes[0].textContent = isCN ? '建筑伤害 ' : 'Building Dmg ';
+  }
+  // Update legend
+  const legend = document.querySelector('.legend');
+  if (legend) {
+    legend.innerHTML = isCN
+      ? '<span><span class="dot dmg"></span> 伤害</span><span><span class="dot tower"></span> 皇家塔伤害</span><span><span class="dot building"></span> 建筑伤害</span>'
+      : '<span><span class="dot dmg"></span> Damage</span><span><span class="dot tower"></span> Tower Damage</span><span><span class="dot building"></span> Building Damage</span>';
+  }
+}
+
+// ════════════════════════════════════════
+// Render
+// ════════════════════════════════════════
+function render() {
+  const lv = currentLevel;
+  const isCN = currentLang === 'cn';
+
+  // Sort cards
+  const sorted = [...CARDS].sort((a, b) => {
+    const va = getSortValue(a, sortKey);
+    const vb = getSortValue(b, sortKey);
+    // Building damage: empty always last regardless of sort direction
+    if (sortKey === 'bld') {
+      if (va === -1 && vb === -1) return 0;
+      if (va === -1) return 1;
+      if (vb === -1) return -1;
+    }
+    if (typeof va === 'string') return va.localeCompare(vb) * sortDir;
+    return (va - vb) * sortDir;
+  });
+
+  // ── Update sort arrows ──
+  document.querySelectorAll('th').forEach(th => {
+    const key = th.dataset.sort;
+    th.classList.remove('sort-asc', 'sort-desc');
+    if (key === sortKey) {
+      th.classList.add(sortDir === 1 ? 'sort-asc' : 'sort-desc');
+      th.querySelector('.sort-arrow').textContent = sortDir === 1 ? '▲' : '▼';
+    } else {
+      th.querySelector('.sort-arrow').textContent = '▼';
+    }
+  });
+
+  // ── Table ──
+  const tbody = document.getElementById('tableBody');
+  tbody.innerHTML = sorted.map(c => {
+    const name = isCN ? c.cn : c.en;
+    const dmgTotal = c[`dmg${lv}`];
+    const dmgBd = c[`dmg${lv}b`] || '';
+    const twrTotal = c[`twr${lv}`];
+    const twrBd = c[`twr${lv}b`] || '';
+    const bldTotal = c[`bld${lv}`];
+    const bldBd = c[`bld${lv}b`] || '';
+
+    return `<tr>
+      <td>
+        <div class="cell-name">
+          <div class="td-icon"><img src="icon/${c.icon}" alt="" loading="lazy" onerror="this.style.background='#f5f5f5'"></div>
+          <span>${name}</span>
+        </div>
+      </td>
+      <td class="td-dmg">${fmtDmg(dmgTotal, dmgBd)}</td>
+      <td class="td-pct">${(c.twrPct * 100).toFixed(c.twrPct % 1 === 0 ? 0 : 1)}%</td>
+      <td class="td-tower">${c.twrPct > 0 && twrTotal !== '0' ? fmtDmg(twrTotal, twrBd) : '<span class="td-na">0</span>'}</td>
+      <td class="td-building">${bldTotal ? fmtDmg(bldTotal, bldBd) : '<span class="td-na">—</span>'}</td>
+    </tr>`;
+  }).join('');
+
+  // ── Grid ──
+  const grid = document.getElementById('gridView');
+  grid.innerHTML = sorted.map(c => {
+    const name = isCN ? c.cn : c.en;
+    const dmgTotal = c[`dmg${lv}`];
+    const dmgBd = c[`dmg${lv}b`] || '';
+    const twrTotal = c[`twr${lv}`];
+    const twrBd = c[`twr${lv}b`] || '';
+    const hasTwr = c.twrPct > 0 && twrTotal !== '0';
+    const bldTotal = c[`bld${lv}`];
+    const bldBd = c[`bld${lv}b`] || '';
+    const hasBld = bldTotal && bldTotal !== '';
+
+    let rows = `<div class="dmg-row"><span class="dmg-label">${isCN ? '伤害' : 'Damage'}</span><span class="dmg-value damage">${fmtDmg(dmgTotal, dmgBd)}</span></div>`;
+
+    if (hasTwr) {
+      rows += `<div class="dmg-row"><span class="dmg-label">${isCN ? '皇家塔伤害' : 'Tower Dmg'} <span class="tower-pct">(${(c.twrPct*100).toFixed(1)}%)</span></span><span class="dmg-value tower">${fmtDmg(twrTotal, twrBd)}</span></div>`;
+    }
+    if (hasBld) {
+      rows += `<div class="dmg-row"><span class="dmg-label">${isCN ? '建筑伤害' : 'Building Dmg'}</span><span class="dmg-value building">${fmtDmg(bldTotal, bldBd)}</span></div>`;
+    }
+
+    let footer = '';
+    if (!hasTwr && c.twrPct === 0) {
+      footer = `<div class="card-footer">${isCN ? '对皇家塔伤害为 0' : 'Zero tower damage'}</div>`;
+    }
+
+    return `<div class="card">
+      <div class="card-header">
+        <div class="card-icon"><img src="icon/${c.icon}" alt="" loading="lazy" onerror="this.parentElement.style.background='#f5f5f5'"></div>
+        <span class="card-name">${name}</span>
+      </div>
+      <div class="card-body">${rows}</div>
+      ${footer}
+    </div>`;
+  }).join('');
+}
+
+// ── Initial ──
+render();
+</script>
+</body>
+</html>
