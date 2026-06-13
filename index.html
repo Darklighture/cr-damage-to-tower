@@ -195,7 +195,7 @@
 <body>
 <header>
   <div class="header-top">
-    <h1>⚔️ 皇室战争对塔伤害</h1>
+    <h1 id="pageTitle">⚔️ 皇室战争对塔伤害</h1>
     <div class="controls">
       <button class="btn active" id="btn11" onclick="setLevel(11)">11 级</button>
       <button class="btn" id="btn16" onclick="setLevel(16)">16 级</button>
@@ -376,6 +376,8 @@ function doSort(key) {
 
 function updateLabels() {
   const isCN = currentLang === 'cn';
+  // Update page title
+  document.getElementById('pageTitle').textContent = isCN ? '⚔️ 皇室战争对塔伤害' : '⚔️ Clash Royale Damage to Tower';
   // Update column headers
   const ths = document.querySelectorAll('th');
   if (ths.length >= 5) {
