@@ -411,7 +411,7 @@ function render() {
       if (va === -1) return 1;
       if (vb === -1) return -1;
     }
-    if (typeof va === 'string') return va.localeCompare(vb) * sortDir;
+    if (typeof va === 'string') return va.localeCompare(vb, 'zh-CN', {sensitivity:'base'}) * sortDir;
     return (va - vb) * sortDir;
   });
 
