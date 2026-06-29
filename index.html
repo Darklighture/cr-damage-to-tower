@@ -178,10 +178,21 @@
 
   /* ── Footer ── */
   .page-footer {
-    text-align: center;
+    max-width: 900px;
+    margin: 0 auto;
     padding: 20px 16px 24px;
-    color: #bbb;
+    color: #999;
     font-size: 0.78rem;
+    line-height: 1.7;
+  }
+  .page-footer .footer-date {
+    text-align: center;
+    color: #bbb;
+    margin-top: 18px;
+  }
+  .page-footer .footer-note {
+    text-align: left;
+    color: #aaa;
   }
 
   @media (max-width: 600px) {
@@ -235,8 +246,9 @@
   <div class="grid" id="gridView"></div>
 </main>
 
-<footer class="page-footer">
-  数据更新截止到 2026.6
+<footer class="page-footer" id="pageFooter">
+  <div class="footer-note" id="footerNote"></div>
+  <div class="footer-date">数据更新截止到 2026.6</div>
 </footer>
 
 <script>
@@ -394,6 +406,10 @@ function updateLabels() {
       ? '<span><span class="dot dmg"></span> 伤害</span><span><span class="dot tower"></span> 皇家塔伤害</span><span><span class="dot building"></span> 建筑伤害</span>'
       : '<span><span class="dot dmg"></span> Damage</span><span><span class="dot tower"></span> Tower Damage</span><span><span class="dot building"></span> Building Damage</span>';
   }
+  // Update footer note
+  document.getElementById('footerNote').innerHTML = isCN
+    ? '武僧反弹的法术或弹道对皇家塔造成的伤害分4种情况：<br>1. 反弹的<b>溅射弹道</b>（法师、电磁炮、寒冰法师等）→ 对塔造成 <b>25%</b> 伤害；<br>2. 反弹的<b>穿透弹道</b>（神箭游侠、飞斧屠夫、巨石投手、烟花炮手、猎人等）→ 对塔造成 <b>100%</b> 伤害；<br>3. 反弹的<b>法术</b> → 对塔造成其<b>原本的对塔伤害倍率</b>；<br>4. 反弹的<b>皇家塔弹道</b> → 对塔造成 <b>25%</b> 伤害。'
+    : 'Monk reflected spells/projectiles deal tower damage in 4 cases:<br>1. Reflected <b>splash projectiles</b> (Wizard, Sparky, Ice Wizard, etc.) → <b>25%</b> tower damage;<br>2. Reflected <b>piercing projectiles</b> (Magic Archer, Executioner, Bowler, Firecracker, Hunter, etc.) → <b>100%</b> tower damage;<br>3. Reflected <b>spells</b> → use their <b>original tower damage multiplier</b>;<br>4. Reflected <b>crown tower projectiles</b> → <b>25%</b> tower damage.';
 }
 
 // ════════════════════════════════════════
@@ -493,6 +509,7 @@ function render() {
 }
 
 // ── Initial ──
+updateLabels();
 render();
 </script>
 </body>
